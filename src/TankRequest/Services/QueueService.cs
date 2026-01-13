@@ -16,34 +16,50 @@ namespace TankRequest.Services
         }
 
         /// <summary>
-        /// Parse raw input string to extract tank name and multiplier.
-        /// Example: "IS-7 x3" -> ("IS-7", 3)
+        /// Parse raw input string to extract tank name, cost, and special type.
+        /// Example: "IS-7 x3" -> ("IS-7", 3, "Normal", null)
+        /// Example: "Arty xA" -> ("Arty", 5, "Arty", null)
         /// </summary>
-        public (string tank, int mult, string error) ParseInput(string raw, bool forceMult1 = false)
+        public (string tank, int cost, string type, string error) ParseInput(string raw, bool forceMult1 = false)
         {
             if (string.IsNullOrWhiteSpace(raw))
-                return ("", 1, "Adj meg egy tanknevet! Pl.: 'IS-7'");
+                return ("", 1, "Normal", "Adj meg egy tanknevet! Pl.: 'IS-7'");
 
             raw = raw.Trim();
-            int mult = 1;
+            int cost = 1;
+            string type = "Normal";
             string tank = raw;
 
-            // Check for multiplier pattern: x2, x3, etc.
-            var match = Regex.Match(raw, @"^(.+?)\s*[xX](\d+)$");
-            if (match.Success)
+            // Check for special modifiers first
+            var matchSpecial = Regex.Match(raw, @"^(.+?)\s*[xX]([aAfFtT])$");
+            if (matchSpecial.Success)
             {
-                tank = match.Groups[1].Value.Trim();
-                if (!forceMult1)
-                    int.TryParse(match.Groups[2].Value, out mult);
+                tank = matchSpecial.Groups[1].Value.Trim();
+                string modifier = matchSpecial.Groups[2].Value.ToUpper();
+                
+                if (modifier == "A") { cost = _config.CostArty; type = "Arty"; }
+                else if (modifier == "F") { cost = _config.CostBlacklist; type = "Blacklist"; }
+                else if (modifier == "T") { cost = _config.CostTroll; type = "Troll"; }
+            }
+            else
+            {
+                // Check for multiplier pattern: x2, x3, etc.
+                var matchMult = Regex.Match(raw, @"^(.+?)\s*[xX](\d+)$");
+                if (matchMult.Success)
+                {
+                    tank = matchMult.Groups[1].Value.Trim();
+                    if (!forceMult1)
+                        int.TryParse(matchMult.Groups[2].Value, out cost);
+                }
             }
 
             if (string.IsNullOrWhiteSpace(tank))
-                return ("", 1, "Adj meg egy tanknevet! Pl.: 'IS-7'");
+                return ("", 1, "Normal", "Adj meg egy tanknevet! Pl.: 'IS-7'");
 
             if (tank.Length > _config.MaxTankNameLength)
-                return ("", 1, $"Túl hosszú a tanknév (max {_config.MaxTankNameLength} karakter)!");
+                return ("", 1, "Normal", $"Túl hosszú a tanknév (max {_config.MaxTankNameLength} karakter)!");
 
-            return (tank, mult, null);
+            return (tank, cost, type, null);
         }
 
         /// <summary>

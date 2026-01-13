@@ -27,7 +27,7 @@ namespace TankRequest.Handlers
             string redemptionId = Arg("redemptionId");
             string rewardId = Arg("rewardId");
 
-            var (tank, mult, error) = _queueService.ParseInput(RawInput, forceMult1: false);
+            var (tank, cost, type, error) = _queueService.ParseInput(RawInput, forceMult1: false);
             if (error != null)
             {
                 _cph.SetArgument("allow", "false");
@@ -44,26 +44,33 @@ namespace TankRequest.Handlers
             user.userName = UserName;
 
             int balance = _tokenService.GetActiveBalance(user);
-            if (balance < mult)
+            if (balance < cost)
             {
                 _cph.SetArgument("allow", "false");
-                _cph.SetArgument("displayMsg", $"Nincs elég tokened (van: {balance}, kell: {mult}).");
+                _cph.SetArgument("displayMsg", $"Nincs elég tokened (van: {balance}, kell: {cost}).");
                 return;
             }
 
-            _tokenService.Consume(user, mult);
+            _tokenService.Consume(user, cost);
             _queueService.AddToSupporterQueue(state, new QueueItem
             {
-                user = UserName, tank = tank, mult = mult,
+                user = UserName, tank = tank, mult = cost,
                 tsUtc = DateTime.UtcNow, raw = RawInput,
-                redemptionId = redemptionId, rewardId = rewardId
+                redemptionId = redemptionId, rewardId = rewardId,
+                specialType = type
             });
             _stateService.Save(state);
             _overlayService.RenderQueue(state);
 
             int balanceAfter = _tokenService.GetActiveBalance(user);
             _cph.SetArgument("allow", "true");
-            _cph.SetArgument("displayMsg", $"Felvéve: [S] {tank} x{mult} – {UserName}. Maradt: {balanceAfter}.");
+            
+            string msg = $"Felvéve: [S] {tank} x{cost} – {UserName}. Maradt: {balanceAfter}.";
+            if (type == "Arty") msg = $"Arty kérés kiváltva: {tank} (5 token). Maradt: {balanceAfter}.";
+            else if (type == "Blacklist") msg = $"Feketelistás kérés kiváltva: {tank} (3 token). Maradt: {balanceAfter}.";
+            else if (type == "Troll") msg = $"Troll kérés kiváltva: {tank} (10 token). Maradt: {balanceAfter}.";
+            
+            _cph.SetArgument("displayMsg", msg);
             
             if (!string.IsNullOrEmpty(rewardId) && !string.IsNullOrEmpty(redemptionId))
                 _cph.TwitchRedemptionFulfill(rewardId, redemptionId);
@@ -74,7 +81,7 @@ namespace TankRequest.Handlers
             string redemptionId = Arg("redemptionId");
             string rewardId = Arg("rewardId");
 
-            var (tank, _, error) = _queueService.ParseInput(RawInput, forceMult1: true);
+            var (tank, cost, type, error) = _queueService.ParseInput(RawInput, forceMult1: true);
             if (error != null)
             {
                 _cph.SetArgument("allow", "false");
@@ -87,7 +94,8 @@ namespace TankRequest.Handlers
             {
                 user = UserName, tank = tank, mult = 1,
                 tsUtc = DateTime.UtcNow, raw = RawInput,
-                redemptionId = redemptionId, rewardId = rewardId
+                redemptionId = redemptionId, rewardId = rewardId,
+                specialType = "Normal"
             });
             _stateService.Save(state);
             _overlayService.RenderQueue(state);
@@ -116,6 +124,10 @@ namespace TankRequest.Handlers
             }
 
             var text = item.mult > 1 ? $"{item.tank} x{item.mult}" : item.tank;
+            if (item.specialType == "Arty") text = $"{item.tank} [ARTY]";
+            if (item.specialType == "Blacklist") text = $"{item.tank} [BLACKLIST]";
+            if (item.specialType == "Troll") text = $"{item.tank} [TROLL]";
+            
             SendMessage($"Teljesítve: {(isSupporter ? "[S]" : "[N]")} {text} — {item.user}");
             _overlayService.RenderQueue(state);
         }
@@ -181,7 +193,7 @@ namespace TankRequest.Handlers
                 return;
             }
             
-            var (tank, _, error) = _queueService.ParseInput(RawInput, forceMult1: true);
+            var (tank, cost, type, error) = _queueService.ParseInput(RawInput, forceMult1: true);
             if (error != null)
             {
                 SendMessage($"@{UserName}, {error}");
@@ -192,7 +204,8 @@ namespace TankRequest.Handlers
             _queueService.AddToNormalQueue(state, new QueueItem
             {
                 user = UserName, tank = tank, mult = 1,
-                tsUtc = DateTime.UtcNow, raw = RawInput
+                tsUtc = DateTime.UtcNow, raw = RawInput,
+                specialType = "Normal"
             });
             _stateService.Save(state);
             _overlayService.RenderQueue(state);
@@ -214,7 +227,7 @@ namespace TankRequest.Handlers
                 return;
             }
             
-            var (tank, mult, error) = _queueService.ParseInput(RawInput, forceMult1: false);
+            var (tank, cost, type, error) = _queueService.ParseInput(RawInput, forceMult1: false);
             if (error != null)
             {
                 SendMessage($"@{UserName}, {error}");
@@ -224,13 +237,16 @@ namespace TankRequest.Handlers
             var state = _stateService.Load();
             _queueService.AddToSupporterQueue(state, new QueueItem
             {
-                user = UserName, tank = tank, mult = mult,
-                tsUtc = DateTime.UtcNow, raw = RawInput
+                user = UserName, tank = tank, mult = cost,
+                tsUtc = DateTime.UtcNow, raw = RawInput,
+                specialType = type
             });
             _stateService.Save(state);
             _overlayService.RenderQueue(state);
             
-            SendMessage($"[TESZT] Felvéve: [S] {tank} x{mult} – {UserName}");
+            string msg = $"[TESZT] Felvéve: [S] {tank} x{cost} – {UserName}";
+            if (type != "Normal" && type != "Supporter") msg += $" ({type})";
+            SendMessage(msg);
         }
     }
 }

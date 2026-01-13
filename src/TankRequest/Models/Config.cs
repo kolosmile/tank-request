@@ -20,11 +20,19 @@ namespace TankRequest.Models
         public int MaxTankNameLength { get; set; } = 15;
         
         // Reward name patterns (for auto-detection)
-        public string SupporterRewardPattern { get; set; } = "supporter";
-        public string NormalRewardPattern { get; set; } = "tank";
+        public string SupporterRewardPattern { get; set; } = "támogatói tank";
+        public string NormalRewardPattern { get; set; } = "tank kérés";
         
         // Hotkey detection - key value as Streamer.bot sends it
         public string DequeueHotkey { get; set; } = "shift+alt+ctrl+vcp";
         public string RefundTopHotkey { get; set; } = "shift+ctrl+vcr";
+
+        // Special Costs
+        public int CostArty { get; set; } = 5;
+        public int CostBlacklist { get; set; } = 3;
+        public int CostTroll { get; set; } = 10;
+        
+        // Battle Duration (minutes) for ETA
+        public int BattleDurationMinutes { get; set; } = 8;
     }
 }

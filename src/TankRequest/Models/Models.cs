@@ -46,5 +46,8 @@ namespace TankRequest.Models
         public string tipAmount { get; set; } = "";
         public string redemptionId { get; set; } = "";
         public string rewardId { get; set; } = "";
+        
+        // "Arty", "Blacklist", "Troll", or null/empty
+        public string specialType { get; set; } = "";
     }
 }

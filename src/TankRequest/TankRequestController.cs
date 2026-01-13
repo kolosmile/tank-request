@@ -105,7 +105,7 @@ namespace TankRequest
             {
                 // Token handlers
                 case "credit_tokens": _tokenHandlers.HandleCreditTokens(); break;
-                case "balance": _tokenHandlers.HandleBalance(); break;
+                case "balance": _tokenHandlers.HandleTankInfo(); break;
                 case "add_tokens": _tokenHandlers.HandleAddTokens(); break;
                 case "remove_tokens": _tokenHandlers.HandleRemoveTokens(); break;
                 
@@ -135,7 +135,7 @@ namespace TankRequest
             // Command triggers
             if (!string.IsNullOrEmpty(command))
             {
-                if (command.ToLower() == "!tank") return "balance";
+                if (command.ToLower() == "!tank" || command.ToLower() == "!tankinfo") return "balance";
                 if (command.ToLower() == "!refund") return "refund_all";
                 if (command.ToLower() == "!addtokens") return "add_tokens";
                 if (command.ToLower() == "!removetokens") return "remove_tokens";

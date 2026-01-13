@@ -53,28 +53,76 @@ namespace TankRequest.Handlers
             LogInfo($"[CreditTokens] userId={UserId} +{tokens} (balance={balance})");
         }
 
-        public void HandleBalance()
+        public void HandleTankInfo()
         {
             var state = _stateService.Load();
             if (!state.users.TryGetValue(UserId, out var user))
             {
-                SendMessage($"@{UserName}, nincs támogatói tokened.");
-                return;
+                // Ha nincs user state, csak üzenjük meg
+                 SendMessage($"@{UserName}, nincs támogatói tokened.");
+                 return;
             }
 
             _tokenService.PurgeExpired(user);
             _stateService.Save(state);
 
             int balance = _tokenService.GetActiveBalance(user);
-            if (balance == 0)
+            var expiry = _tokenService.GetNextExpiry(user);
+            var expiryStr = expiry?.ToLocalTime().ToString("HH:mm") ?? "-";
+            
+            // Queue Position Calculation
+            int pos = 0;
+            // Add supporter queue count
+            for (int i = 0; i < state.supporterQueue.Count; i++)
             {
-                SendMessage($"@{UserName}, nincs támogatói tokened.");
-                return;
+                if (state.supporterQueue[i].user.ToLower() == UserName.ToLower())
+                {
+                    pos = i + 1;
+                    break;
+                }
+            }
+            // If not found in supporter queue, check normal queue
+            if (pos == 0)
+            {
+                for (int i = 0; i < state.normalQueue.Count; i++)
+                {
+                    if (state.normalQueue[i].user.ToLower() == UserName.ToLower())
+                    {
+                        pos = state.supporterQueue.Count + i + 1;
+                        break;
+                    }
+                }
+            }
+            
+            string queueInfo = "";
+            if (pos > 0)
+            {
+                // ETA Calculation: (Position - 2) * BattleDuration
+                // Position 1 means active battle. Position 2 is next.
+                // If I am at Pos 3, I wait for Pos 1 (active) and Pos 2 (next).
+                if (pos == 1)
+                {
+                    queueInfo = $" Pozíció: {pos}. (Épp csatában.)";
+                }
+                else
+                {
+                    int waitCount = pos - 2;
+                    if (waitCount <= 0) // Pos 2 basically
+                    {
+                        queueInfo = $" Pozíció: {pos}. (Hamarosan sorra kerülsz.)";
+                    }
+                    else
+                    {
+                        int totalMinutes = waitCount * _config.BattleDurationMinutes;
+                        string eta = totalMinutes < 60 
+                            ? $"{totalMinutes} perc" 
+                            : $"{totalMinutes / 60} óra {totalMinutes % 60} perc";
+                        queueInfo = $" Pozíció: {pos}. (kb. {eta} múlva)";
+                    }
+                }
             }
 
-            var expiry = _tokenService.GetNextExpiry(user);
-            var expiryStr = expiry?.ToLocalTime().ToString("MM-dd HH:mm") ?? "";
-            SendMessage($"@{UserName}, elérhető tokenek: {balance} (lejár: {expiryStr})");
+            SendMessage($"@{UserName}, Egyenleg: {balance} (lejár: {expiryStr}).{queueInfo}");
         }
 
         public void HandleAddTokens()

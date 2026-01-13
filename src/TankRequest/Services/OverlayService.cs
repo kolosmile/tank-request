@@ -63,7 +63,7 @@ namespace TankRequest.Services
             sb.AppendLine(".queue-item { display: flex; align-items: center; gap: 0; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4)); }");
             sb.AppendLine(".icon-box { width: 50px; height: 50px; border-radius: 12px 0 0 12px; display: flex; align-items: center; justify-content: center; background: #171717; border-right: 3px solid #46c89e; }");
             sb.AppendLine(".icon-box img { width: 24px; height: 24px; object-fit: contain; }");
-            sb.AppendLine(".star { font-size: 28px; color: #46c89e; text-shadow: 0 0 8px rgba(70,200,158,0.5); }");
+            sb.AppendLine(".star { font-size: 28px; color: #46c89e; text-shadow: 0 0 8px rgba(70,200,158,0.5); line-height: 1; transform: translateY(-2px); }");
             sb.AppendLine(".amount { font-size: 16px; font-weight: 700; color: #46c89e; }");
             sb.AppendLine(".text-box { background: #171717; border-radius: 0 12px 12px 0; padding: 0 20px; min-width: 210px; height: 50px; display: flex; align-items: center; }");
             sb.AppendLine(".tank-name { color: white; font-size: 22px; font-weight: 400; letter-spacing: 1.5px; }");
@@ -98,8 +98,14 @@ namespace TankRequest.Services
                     sb.AppendLine("</div>");
 
                     // Text box
-                    var displayText = item.mult > 1 ? $"{item.tank} x{item.mult}" : item.tank;
-                    sb.AppendLine($"<div class='text-box'><span class='tank-name'>{displayText}</span></div>");
+                    var displayText = item.tank;
+                    if (item.specialType == "Arty") displayText += " [ARTY]";
+                    else if (item.specialType == "Blacklist") displayText += " [BLACKLIST]";
+                    else if (item.specialType == "Troll") displayText += " [TROLL]";
+                    else if (item.mult > 1) displayText += $" x{item.mult}";
+
+                    string nameStyle = isSupporter ? "style='color: #3bf4ba;'" : "";
+                    sb.AppendLine($"<div class='text-box'><span class='tank-name' {nameStyle}>{displayText}</span></div>");
                     
                     sb.AppendLine("</div>");
                 }
