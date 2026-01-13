@@ -1,0 +1,173 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      background: #2a2a3e;
+      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px;
+      width: fit-content;
+    }
+
+    .queue-item {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+    }
+
+    /* Fekete háttér, #46c89e elválasztó minden esetben */
+    .icon-box {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px 0 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(20, 20, 25, 0.95);
+      border-right: 3px solid #46c89e;
+    }
+
+    .icon-box img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+    }
+
+    /* Csillag és tip összeg: #46c89e */
+    .star {
+      font-size: 28px;
+      color: #46c89e;
+      text-shadow: 0 0 8px rgba(70, 200, 158, 0.5);
+    }
+
+    .amount {
+      font-size: 16px;
+      font-weight: 700;
+      color: #46c89e;
+    }
+
+    .text-box {
+      background: rgba(20, 20, 25, 0.95);
+      border-radius: 0 12px 12px 0;
+      padding: 12px 20px;
+      min-width: 200px;
+    }
+
+    .tank-name {
+      color: white;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .queue-footer {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 16px;
+      padding-left: 60px;
+      margin-top: 4px;
+    }
+
+    h2 {
+      color: white;
+      margin-bottom: 10px;
+      opacity: 0.7;
+    }
+
+    .section {
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="section">
+    <h2>Támogatói kérések (★ csillag - #46c89e)</h2>
+    <div class="container">
+      <div class="queue-item">
+        <div class="icon-box"><span class="star">★</span></div>
+        <div class="text-box"><span class="tank-name">Obj 140 x3</span></div>
+      </div>
+      <div class="queue-item">
+        <div class="icon-box"><span class="star">★</span></div>
+        <div class="text-box"><span class="tank-name">IS-7</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Normál kérések (scheffton.png)</h2>
+    <div class="container">
+      <div class="queue-item">
+        <div class="icon-box"><img src="scheffton.png" alt="icon"></div>
+        <div class="text-box"><span class="tank-name">Kunze Panzer</span></div>
+      </div>
+      <div class="queue-item">
+        <div class="icon-box"><img src="scheffton.png" alt="icon"></div>
+        <div class="text-box"><span class="tank-name">EBR 105</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>StreamElements Tip/Donate (összeg - #46c89e)</h2>
+    <div class="container">
+      <div class="queue-item">
+        <div class="icon-box"><span class="amount">5€</span></div>
+        <div class="text-box"><span class="tank-name">T49</span></div>
+      </div>
+      <div class="queue-item">
+        <div class="icon-box"><span class="amount">10€</span></div>
+        <div class="text-box"><span class="tank-name">Leopard 1</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Kombinált lista (ahogy OBS-ben jelenik meg)</h2>
+    <div class="container">
+      <div class="queue-item">
+        <div class="icon-box"><span class="star">★</span></div>
+        <div class="text-box"><span class="tank-name">Obj 140 x2</span></div>
+      </div>
+      <div class="queue-item">
+        <div class="icon-box"><span class="amount">5€</span></div>
+        <div class="text-box"><span class="tank-name">T-62A</span></div>
+      </div>
+      <div class="queue-item">
+        <div class="icon-box"><img src="scheffton.png" alt="icon"></div>
+        <div class="text-box"><span class="tank-name">Kunze Panzer</span></div>
+      </div>
+      <div class="queue-item">
+        <div class="icon-box"><img src="scheffton.png" alt="icon"></div>
+        <div class="text-box"><span class="tank-name">EBR 105</span></div>
+      </div>
+      <div class="queue-item">
+        <div class="icon-box"><img src="scheffton.png" alt="icon"></div>
+        <div class="text-box"><span class="tank-name">121B</span></div>
+      </div>
+      <div class="queue-footer">+10 a sorban</div>
+    </div>
+  </div>
+
+</body>
+
+</html>
