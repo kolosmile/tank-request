@@ -108,6 +108,7 @@ namespace TankRequest
                 case "balance": _tokenHandlers.HandleTankInfo(); break;
                 case "add_tokens": _tokenHandlers.HandleAddTokens(); break;
                 case "remove_tokens": _tokenHandlers.HandleRemoveTokens(); break;
+                case "tank_help": _tokenHandlers.HandleTankHelp(); break;
                 
                 // Queue handlers
                 case "supporter_redeem": _queueHandlers.HandleSupporterRedeem(); break;
@@ -141,6 +142,7 @@ namespace TankRequest
                 if (command.ToLower() == "!removetokens") return "remove_tokens";
                 if (command.ToLower() == "!addnorm") return "queue_normal";
                 if (command.ToLower() == "!addsupp") return "queue_supporter";
+                if (command.ToLower() == "!tk") return "tank_help";
             }
             
             // Channel Point triggers - uses config patterns

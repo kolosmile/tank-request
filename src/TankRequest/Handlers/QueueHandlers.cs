@@ -39,6 +39,27 @@ namespace TankRequest.Handlers
             }
 
             var state = _stateService.Load();
+            
+            // Auto-merge logic for redemption (Manual -> Real ID)
+            if (!state.users.ContainsKey(UserId))
+            {
+                string manualId = "manual_" + UserName.ToLower();
+                string seId = "se_" + UserName.ToLower();
+                
+                string existingId = null;
+                if (state.users.ContainsKey(manualId)) existingId = manualId;
+                else if (state.users.ContainsKey(seId)) existingId = seId;
+                
+                if (existingId != null)
+                {
+                    // Migrate user data to real ID
+                    var existingUser = state.users[existingId];
+                    state.users.Remove(existingId);
+                    state.users[UserId] = existingUser;
+                    LogInfo($"[RedeemMerge] Migrated {UserName} from {existingId} to real ID {UserId}");
+                }
+            }
+
             if (!state.users.TryGetValue(UserId, out var user))
             {
                 user = new UserState();
