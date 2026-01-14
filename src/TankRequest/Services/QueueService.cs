@@ -31,14 +31,14 @@ namespace TankRequest.Services
             string tank = raw;
 
             // Check for special modifiers first
-            var matchSpecial = Regex.Match(raw, @"^(.+?)\s*[xX]([aAfFtT])$");
+            var matchSpecial = Regex.Match(raw, @"^(.+?)\s*[xX]([aAbBtT])$");
             if (matchSpecial.Success)
             {
                 tank = matchSpecial.Groups[1].Value.Trim();
                 string modifier = matchSpecial.Groups[2].Value.ToUpper();
                 
                 if (modifier == "A") { cost = _config.CostArty; type = "Arty"; }
-                else if (modifier == "F") { cost = _config.CostBlacklist; type = "Blacklist"; }
+                else if (modifier == "B") { cost = _config.CostBlacklist; type = "Blacklist"; }
                 else if (modifier == "T") { cost = _config.CostTroll; type = "Troll"; }
             }
             else

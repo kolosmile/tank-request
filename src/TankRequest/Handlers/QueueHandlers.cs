@@ -32,6 +32,9 @@ namespace TankRequest.Handlers
             {
                 _cph.SetArgument("allow", "false");
                 _cph.SetArgument("displayMsg", error);
+                if (!string.IsNullOrEmpty(rewardId) && !string.IsNullOrEmpty(redemptionId))
+                    try { _cph.TwitchRedemptionCancel(rewardId, redemptionId); } catch { }
+                SendMessage($"@{UserName}, {error}");
                 return;
             }
 
@@ -47,7 +50,11 @@ namespace TankRequest.Handlers
             if (balance < cost)
             {
                 _cph.SetArgument("allow", "false");
-                _cph.SetArgument("displayMsg", $"Nincs elég tokened (van: {balance}, kell: {cost}).");
+                string errMsg = $"Nincs elég tokened (van: {balance}, kell: {cost}).";
+                _cph.SetArgument("displayMsg", errMsg);
+                if (!string.IsNullOrEmpty(rewardId) && !string.IsNullOrEmpty(redemptionId))
+                    try { _cph.TwitchRedemptionCancel(rewardId, redemptionId); } catch { }
+                SendMessage($"@{UserName}, {errMsg}");
                 return;
             }
 
@@ -71,6 +78,7 @@ namespace TankRequest.Handlers
             else if (type == "Troll") msg = $"Troll kérés kiváltva: {tank} (10 token). Maradt: {balanceAfter}.";
             
             _cph.SetArgument("displayMsg", msg);
+            SendMessage(msg);
             
             if (!string.IsNullOrEmpty(rewardId) && !string.IsNullOrEmpty(redemptionId))
                 _cph.TwitchRedemptionFulfill(rewardId, redemptionId);
@@ -86,6 +94,9 @@ namespace TankRequest.Handlers
             {
                 _cph.SetArgument("allow", "false");
                 _cph.SetArgument("displayMsg", error);
+                if (!string.IsNullOrEmpty(rewardId) && !string.IsNullOrEmpty(redemptionId))
+                    try { _cph.TwitchRedemptionCancel(rewardId, redemptionId); } catch { }
+                SendMessage($"@{UserName}, {error}");
                 return;
             }
 
@@ -101,7 +112,9 @@ namespace TankRequest.Handlers
             _overlayService.RenderQueue(state);
 
             _cph.SetArgument("allow", "true");
-            _cph.SetArgument("displayMsg", $"Felvéve: [N] {tank} – {UserName}");
+            string msg = $"Felvéve: [N] {tank} – {UserName}";
+            _cph.SetArgument("displayMsg", msg);
+            SendMessage(msg);
         }
 
         public void HandleDequeue()
