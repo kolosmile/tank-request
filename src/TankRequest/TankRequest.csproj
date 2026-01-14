@@ -11,4 +11,7 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
+  <Target Name="CopyDllToRoot" AfterTargets="Build">
+    <Copy SourceFiles="$(OutputPath)TankRequest.dll" DestinationFolder="$(ProjectDir)..\.." />
+  </Target>
 </Project>
