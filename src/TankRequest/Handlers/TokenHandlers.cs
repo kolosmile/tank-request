@@ -147,7 +147,8 @@ namespace TankRequest.Handlers
             else if (parts.Length >= 2 && int.TryParse(parts[parts.Length - 1], out amount))
             {
                 targetUserName = parts[0].TrimStart('@');
-                targetUserId = targetUserName.ToLower();
+                // Lookup by userName (will be done after state load)
+                targetUserId = null;
             }
             else
             {
@@ -156,18 +157,44 @@ namespace TankRequest.Handlers
             }
             
             var state = _stateService.Load();
-            if (!state.users.TryGetValue(targetUserId, out var user))
+            UserState user = null;
+            
+            if (targetUserId != null)
             {
-                user = new UserState();
-                state.users[targetUserId] = user;
+                // Self - use direct ID lookup
+                if (!state.users.TryGetValue(targetUserId, out user))
+                {
+                    user = new UserState();
+                    state.users[targetUserId] = user;
+                }
+            }
+            else
+            {
+                // Target user - find by userName
+                foreach (var kvp in state.users)
+                {
+                    if (kvp.Value.userName != null && 
+                        kvp.Value.userName.Equals(targetUserName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        targetUserId = kvp.Key;
+                        user = kvp.Value;
+                        targetUserName = user.userName; // Use proper casing
+                        break;
+                    }
+                }
+                if (user == null)
+                {
+                    SendMessage($"@{UserName}, {targetUserName} nem található a rendszerben.");
+                    return;
+                }
             }
             user.userName = targetUserName;
             
-            _tokenService.Credit(user, amount, "test");
+            _tokenService.Credit(user, amount, "manual");
             _stateService.Save(state);
             
             int balance = _tokenService.GetActiveBalance(user);
-            SendMessage($"@{targetUserName}, +{amount} teszt token. Egyenleg: {balance}");
+            SendMessage($"@{targetUserName}, +{amount} token. Egyenleg: {balance}");
             LogInfo($"[AddTokens] {targetUserName} +{amount} (balance={balance})");
         }
 
@@ -193,7 +220,7 @@ namespace TankRequest.Handlers
             else if (parts.Length >= 2 && int.TryParse(parts[parts.Length - 1], out amount))
             {
                 targetUserName = parts[0].TrimStart('@');
-                targetUserId = targetUserName.ToLower();
+                targetUserId = null;
             }
             else
             {
@@ -202,7 +229,28 @@ namespace TankRequest.Handlers
             }
             
             var state = _stateService.Load();
-            if (!state.users.TryGetValue(targetUserId, out var user))
+            UserState user = null;
+            
+            if (targetUserId != null)
+            {
+                state.users.TryGetValue(targetUserId, out user);
+            }
+            else
+            {
+                foreach (var kvp in state.users)
+                {
+                    if (kvp.Value.userName != null && 
+                        kvp.Value.userName.Equals(targetUserName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        targetUserId = kvp.Key;
+                        user = kvp.Value;
+                        targetUserName = user.userName;
+                        break;
+                    }
+                }
+            }
+            
+            if (user == null)
             {
                 SendMessage($"@{UserName}, {targetUserName} nem található.");
                 return;

@@ -223,7 +223,7 @@ namespace TankRequest.Handlers
             _stateService.Save(state);
             _overlayService.RenderQueue(state);
             
-            SendMessage($"[TESZT] Felvéve: [N] {tank} – {UserName}");
+            SendMessage($"[MANUAL] Felvéve: [N] {tank} – {UserName}");
         }
 
         public void HandleQueueSupporter()
@@ -236,11 +236,38 @@ namespace TankRequest.Handlers
             
             if (string.IsNullOrEmpty(RawInput))
             {
-                SendMessage($"@{UserName}, használat: !queuesupporter [tank név] [szorzó]");
+                SendMessage($"@{UserName}, használat: !queuesupporter [@user] [tank név] [szorzó/kód]");
                 return;
             }
             
-            var (tank, cost, type, error) = _queueService.ParseInput(RawInput, forceMult1: false);
+            // Check for @user target
+            string targetUser = null;
+            string targetUserId = null;
+            string inputToParse = RawInput;
+            
+            if (RawInput.StartsWith("@"))
+            {
+                var parts = RawInput.Split(new[] { ' ' }, 2);
+                if (parts.Length >= 2)
+                {
+                    targetUser = parts[0].TrimStart('@');
+                    inputToParse = parts[1];
+                    // Try to find userId from targetUser0 argument (if available from Streamer.bot)
+                    targetUserId = Arg("targetUserId");
+                    if (string.IsNullOrEmpty(targetUserId))
+                    {
+                        // Fallback: use targetUser as both name and ID (will need user lookup)
+                        targetUserId = targetUser.ToLower();
+                    }
+                }
+                else
+                {
+                    SendMessage($"@{UserName}, használat: !queuesupporter @user [tank név] [szorzó/kód]");
+                    return;
+                }
+            }
+            
+            var (tank, cost, type, error) = _queueService.ParseInput(inputToParse, forceMult1: false);
             if (error != null)
             {
                 SendMessage($"@{UserName}, {error}");
@@ -248,16 +275,64 @@ namespace TankRequest.Handlers
             }
             
             var state = _stateService.Load();
+            string queueUserName = targetUser ?? UserName;
+            string queueUserId = targetUserId ?? UserId;
+            
+            // If @user specified, deduct tokens from that user
+            if (targetUser != null)
+            {
+                // Find user by userName (case-insensitive)
+                string foundUserId = null;
+                UserState targetUserState = null;
+                foreach (var kvp in state.users)
+                {
+                    if (kvp.Value.userName != null && 
+                        kvp.Value.userName.Equals(targetUser, StringComparison.OrdinalIgnoreCase))
+                    {
+                        foundUserId = kvp.Key;
+                        targetUserState = kvp.Value;
+                        break;
+                    }
+                }
+                
+                if (targetUserState == null)
+                {
+                    SendMessage($"@{UserName}, {targetUser} nem található a rendszerben.");
+                    return;
+                }
+                
+                queueUserId = foundUserId;
+                queueUserName = targetUserState.userName;
+                
+                int balance = _tokenService.GetActiveBalance(targetUserState);
+                if (balance < cost)
+                {
+                    SendMessage($"@{targetUser} nem rendelkezik elég tokennel (van: {balance}, kell: {cost}).");
+                    return;
+                }
+                
+                _tokenService.Consume(targetUserState, cost);
+            }
+            
             _queueService.AddToSupporterQueue(state, new QueueItem
             {
-                user = UserName, tank = tank, mult = cost,
+                user = queueUserName, tank = tank, mult = cost,
                 tsUtc = DateTime.UtcNow, raw = RawInput,
                 specialType = type
             });
             _stateService.Save(state);
             _overlayService.RenderQueue(state);
             
-            string msg = $"[TESZT] Felvéve: [S] {tank} x{cost} – {UserName}";
+            string msg;
+            if (targetUser != null)
+            {
+                int balanceAfter = _tokenService.GetActiveBalance(state.users[queueUserId]);
+                msg = $"Felvéve: [S] {tank} x{cost} – {targetUser}. Levonva: {cost}. Maradt: {balanceAfter}.";
+            }
+            else
+            {
+                msg = $"[MANUAL] Felvéve: [S] {tank} x{cost} – {UserName}";
+            }
             if (type != "Normal" && type != "Supporter") msg += $" ({type})";
             SendMessage(msg);
         }

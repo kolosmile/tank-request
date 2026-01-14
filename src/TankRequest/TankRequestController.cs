@@ -139,8 +139,8 @@ namespace TankRequest
                 if (command.ToLower() == "!refund") return "refund_all";
                 if (command.ToLower() == "!addtokens") return "add_tokens";
                 if (command.ToLower() == "!removetokens") return "remove_tokens";
-                if (command.ToLower() == "!queuenormal") return "queue_normal";
-                if (command.ToLower() == "!queuesupporter") return "queue_supporter";
+                if (command.ToLower() == "!addnorm") return "queue_normal";
+                if (command.ToLower() == "!addsupp") return "queue_supporter";
             }
             
             // Channel Point triggers - uses config patterns

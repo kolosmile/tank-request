@@ -88,6 +88,12 @@ namespace TankRequest.Services
                     {
                         if (!string.IsNullOrEmpty(item.tipAmount))
                             sb.Append($"<span class='amount'>{item.tipAmount}</span>");
+                        else if (item.specialType == "Arty")
+                            sb.Append("<span class='star'>A</span>");
+                        else if (item.specialType == "Blacklist")
+                            sb.Append("<span class='star'>B</span>");
+                        else if (item.specialType == "Troll")
+                            sb.Append("<span class='star'>T</span>");
                         else
                             sb.Append("<span class='star'>★</span>");
                     }
@@ -97,12 +103,9 @@ namespace TankRequest.Services
                     }
                     sb.AppendLine("</div>");
 
-                    // Text box
+                    // Text box - no special type suffix, just tank name and multiplier
                     var displayText = item.tank;
-                    if (item.specialType == "Arty") displayText += " [ARTY]";
-                    else if (item.specialType == "Blacklist") displayText += " [BLACKLIST]";
-                    else if (item.specialType == "Troll") displayText += " [TROLL]";
-                    else if (item.mult > 1) displayText += $" x{item.mult}";
+                    if (item.mult > 1) displayText += $" x{item.mult}";
 
                     string nameStyle = isSupporter ? "style='color: #3bf4ba;'" : "";
                     sb.AppendLine($"<div class='text-box'><span class='tank-name' {nameStyle}>{displayText}</span></div>");

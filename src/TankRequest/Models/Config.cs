@@ -20,7 +20,7 @@ namespace TankRequest.Models
         public int MaxTankNameLength { get; set; } = 15;
         
         // Reward name patterns (for auto-detection)
-        public string SupporterRewardPattern { get; set; } = "támogatói tank";
+        public string SupporterRewardPattern { get; set; } = "ingyen tank kérés";
         public string NormalRewardPattern { get; set; } = "tank kérés";
         
         // Hotkey detection - key value as Streamer.bot sends it
