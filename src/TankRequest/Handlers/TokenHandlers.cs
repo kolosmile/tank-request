@@ -48,7 +48,9 @@ namespace TankRequest.Handlers
             // StreamElements fallbacks: try different argument names
             if (string.IsNullOrEmpty(tipperUserName))
             {
-                tipperUserName = Arg("user");
+                tipperUserName = Arg("tipUsername");
+                if (string.IsNullOrEmpty(tipperUserName))
+                    tipperUserName = Arg("user");
                 if (string.IsNullOrEmpty(tipperUserName))
                     tipperUserName = Arg("username");
                 if (string.IsNullOrEmpty(tipperUserName))
