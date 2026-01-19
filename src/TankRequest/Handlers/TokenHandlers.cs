@@ -151,6 +151,7 @@ namespace TankRequest.Handlers
             // Check if looking up another user
             UserState user = null;
             string lookupName = UserName;
+            bool userHasTokens = true;
             
             var parts = RawInput.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length > 0 && parts[0].StartsWith("@"))
@@ -170,8 +171,8 @@ namespace TankRequest.Handlers
                 
                 if (user == null)
                 {
-                    SendMessage($"@{UserName}, {lookupName} nem található a rendszerben.");
-                    return;
+                    // User not in token system, but might still be in queue
+                    userHasTokens = false;
                 }
             }
             else
@@ -179,17 +180,21 @@ namespace TankRequest.Handlers
                 // Look up self (caller)
                 if (!state.users.TryGetValue(UserId, out user))
                 {
-                     SendMessage($"@{UserName}, nincs támogatói tokened.");
-                     return;
+                    userHasTokens = false;
                 }
             }
 
-            _tokenService.PurgeExpired(user);
-            _stateService.Save(state);
-
-            int balance = _tokenService.GetActiveBalance(user);
-            var expiry = _tokenService.GetNextExpiry(user);
-            var expiryStr = expiry?.ToLocalTime().ToString("MM.dd. HH:mm") ?? "-";
+            int balance = 0;
+            string expiryStr = "-";
+            
+            if (user != null)
+            {
+                _tokenService.PurgeExpired(user);
+                _stateService.Save(state);
+                balance = _tokenService.GetActiveBalance(user);
+                var expiry = _tokenService.GetNextExpiry(user);
+                expiryStr = expiry?.ToLocalTime().ToString("MM.dd. HH:mm") ?? "-";
+            }
             
             // Queue Position Calculation
             int pos = 0;
@@ -247,7 +252,19 @@ namespace TankRequest.Handlers
                 ? "" 
                 : $"{lookupName} ";
 
-            SendMessage($"@{UserName}, {targetPrefix}Egyenleg: {balance} (lejár: {expiryStr}).{queueInfo}");
+            // Build response based on what info we have
+            if (balance > 0)
+            {
+                SendMessage($"@{UserName}, {targetPrefix}Egyenleg: {balance} (lejár: {expiryStr}).{queueInfo}");
+            }
+            else if (pos > 0)
+            {
+                SendMessage($"@{UserName}, {targetPrefix}Nincs tokened, de van kérésed a sorban.{queueInfo}");
+            }
+            else
+            {
+                SendMessage($"@{UserName}, {targetPrefix}Nincs tokened és nincs kérésed a sorban.");
+            }
         }
 
         public void HandleTankHelp()

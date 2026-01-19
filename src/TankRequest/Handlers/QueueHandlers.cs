@@ -93,10 +93,10 @@ namespace TankRequest.Handlers
             int balanceAfter = _tokenService.GetActiveBalance(user);
             _cph.SetArgument("allow", "true");
             
-            string msg = $"Felvéve: [S] {tank} x{cost} – {UserName}. Maradt: {balanceAfter}.";
-            if (type == "Arty") msg = $"Arty kérés kiváltva: {tank} (5 token). Maradt: {balanceAfter}.";
-            else if (type == "Blacklist") msg = $"Feketelistás kérés kiváltva: {tank} (3 token). Maradt: {balanceAfter}.";
-            else if (type == "Troll") msg = $"Troll kérés kiváltva: {tank} (10 token). Maradt: {balanceAfter}.";
+            string msg = $"Felvéve: [S] {tank} x{cost} – @{UserName}. Maradt: {balanceAfter}.";
+            if (type == "Arty") msg = $"Arty kérés kiváltva: {tank} (5 token) - @{UserName}. Maradt: {balanceAfter}.";
+            else if (type == "Blacklist") msg = $"Feketelistás kérés kiváltva: {tank} (3 token) - @{UserName}. Maradt: {balanceAfter}.";
+            else if (type == "Troll") msg = $"Troll kérés kiváltva: {tank} (10 token) - @{UserName}. Maradt: {balanceAfter}.";
             
             _cph.SetArgument("displayMsg", msg);
             SendMessage(msg);
@@ -133,9 +133,10 @@ namespace TankRequest.Handlers
             _overlayService.RenderQueue(state);
 
             _cph.SetArgument("allow", "true");
-            string msg = $"Felvéve: [N] {tank} – {UserName}";
+            string msg = $"Felvéve: [N] {tank} – @{UserName}";
             _cph.SetArgument("displayMsg", msg);
             SendMessage(msg);
+            LogInfo($"[NormalRedeem] {UserName} added tank {tank} to normal queue");
         }
 
         public void HandleDequeue()
@@ -162,7 +163,7 @@ namespace TankRequest.Handlers
             if (item.specialType == "Blacklist") text = $"{item.tank} [BLACKLIST]";
             if (item.specialType == "Troll") text = $"{item.tank} [TROLL]";
             
-            SendMessage($"Teljesítve: {(isSupporter ? "[S]" : "[N]")} {text} — {item.user}");
+            SendMessage($"Teljesítve: {(isSupporter ? "[S]" : "[N]")} {text} — @{item.user}");
             _overlayService.RenderQueue(state);
         }
 
