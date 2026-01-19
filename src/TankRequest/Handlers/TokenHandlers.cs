@@ -26,10 +26,10 @@ namespace TankRequest.Handlers
         {
             string eventSource = !string.IsNullOrEmpty(Arg("tipAmount")) ? "StreamElements" : "Twitch";
             
-            // Try multiple tier argument names
-            int tier = ArgInt("tier");
-            if (tier == 0) tier = ArgInt("subTier");
-            if (tier == 0) tier = ArgInt("subscriptionTier");
+            // Try multiple tier argument names and formats
+            int tier = ParseTier(Arg("tier"));
+            if (tier == 0) tier = ParseTier(Arg("subTier"));
+            if (tier == 0) tier = ParseTier(Arg("subscriptionTier"));
             
             // Normalize tier: Twitch sometimes sends 1000/2000/3000 instead of 1/2/3
             if (tier >= 1000) tier = tier / 1000;
@@ -37,9 +37,11 @@ namespace TankRequest.Handlers
             
             int bits = ArgInt("bits");
             decimal tipAmount = ArgDecimal("tipAmount");
+            int giftCount = ArgInt("gifts");
+            if (giftCount == 0) giftCount = 1;
             
             // Log tier for debugging
-            LogInfo($"[CreditTokens] Raw tier args: tier={Arg("tier")}, subTier={Arg("subTier")}, final tier={tier}");
+            LogInfo($"[CreditTokens] Raw tier args: tier={Arg("tier")}, subTier={Arg("subTier")}, final tier={tier}, gifts={giftCount}");
 
             // Get user info with fallbacks for StreamElements
             string tipperUserId = UserId;
@@ -105,9 +107,13 @@ namespace TankRequest.Handlers
             }
             user.userName = tipperUserName;
 
-            int tokens = _tokenService.CalculateTokens(eventSource, 
-                bits > 0 ? "cheer" : (tipAmount > 0 ? "tip" : "subscription"), 
-                tier, bits, tipAmount);
+            // Determine event type based on arguments
+            string eventType = "subscription";
+            if (bits > 0) eventType = "cheer";
+            else if (tipAmount > 0) eventType = "tip";
+            else if (giftCount > 1) eventType = "giftbomb";
+
+            int tokens = _tokenService.CalculateTokens(eventSource, eventType, tier, bits, tipAmount, giftCount);
                 
             if (tokens <= 0) return;
 
@@ -390,6 +396,33 @@ namespace TankRequest.Handlers
             int balance = _tokenService.GetActiveBalance(user);
             SendMessage($"@{targetUserName}, -{removed} token. Egyenleg: {balance}");
             LogInfo($"[RemoveTokens] {targetUserName} -{removed} (balance={balance})");
+        }
+
+        /// <summary>
+        /// Parse tier from various formats: "1", "1000", "tier 1", "Tier 1", etc.
+        /// </summary>
+        private int ParseTier(string tierValue)
+        {
+            if (string.IsNullOrEmpty(tierValue)) return 0;
+            
+            // Try direct numeric parse first
+            if (int.TryParse(tierValue, out int numericTier))
+                return numericTier;
+            
+            // Handle "tier X" format (case insensitive)
+            tierValue = tierValue.ToLower().Trim();
+            if (tierValue.StartsWith("tier "))
+            {
+                string numPart = tierValue.Substring(5).Trim();
+                if (int.TryParse(numPart, out int tier))
+                    return tier;
+            }
+            
+            // Handle "prime" as tier 1
+            if (tierValue.Contains("prime"))
+                return 1;
+            
+            return 0;
         }
     }
 }

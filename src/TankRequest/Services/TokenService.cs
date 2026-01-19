@@ -108,7 +108,7 @@ namespace TankRequest.Services
         /// <summary>
         /// Calculate tokens to award based on event type.
         /// </summary>
-        public int CalculateTokens(string eventSource, string eventType, int tier = 0, int bits = 0, decimal tipAmount = 0)
+        public int CalculateTokens(string eventSource, string eventType, int tier = 0, int bits = 0, decimal tipAmount = 0, int giftCount = 1)
         {
             if (eventSource == "Twitch")
             {
@@ -117,8 +117,9 @@ namespace TankRequest.Services
                     case "subscription":
                     case "resub":
                     case "giftsub":
-                    case "giftbomb":
                         return GetTierTokens(tier);
+                    case "giftbomb":
+                        return GetTierTokens(tier) * giftCount;
                     case "cheer":
                         return _config.BitsPerToken > 0 ? bits / _config.BitsPerToken : 0;
                 }
