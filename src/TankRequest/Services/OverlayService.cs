@@ -67,7 +67,7 @@ namespace TankRequest.Services
             sb.AppendLine(".amount { font-size: 16px; font-weight: 700; color: #46c89e; }");
             sb.AppendLine(".text-box { background: #171717; border-radius: 0 12px 12px 0; padding: 0 20px; min-width: 210px; height: 50px; display: flex; align-items: center; }");
             sb.AppendLine(".tank-name { color: white; font-size: 22px; font-weight: 400; letter-spacing: 1.5px; }");
-            sb.AppendLine(".queue-footer { color: rgba(255,255,255,0.7); font-size: 16px; text-align: center; margin-top: 4px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); font-weight: 600; }");
+            sb.AppendLine(".queue-footer { color: white; font-size: 20px; text-align: center; margin-top: 4px; text-shadow: 2px 2px 4px rgba(0,0,0,0.9); font-weight: 700; }");
             sb.AppendLine(".empty-msg { color: rgba(255,255,255,0.4); font-size: 18px; padding: 10px 20px; }");
             sb.AppendLine("</style></head><body>");
             sb.AppendLine("<div class='container'>");
