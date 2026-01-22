@@ -9,10 +9,12 @@ namespace TankRequest.Services
     public class QueueService
     {
         private readonly Config _config;
+        private readonly Messages _msg;
 
-        public QueueService(Config config)
+        public QueueService(Config config, Messages messages)
         {
             _config = config;
+            _msg = messages;
         }
 
         /// <summary>
@@ -23,7 +25,7 @@ namespace TankRequest.Services
         public (string tank, int cost, string type, string error) ParseInput(string raw, bool forceMult1 = false)
         {
             if (string.IsNullOrWhiteSpace(raw))
-                return ("", 1, "Normal", "Adj meg egy tanknevet! Pl.: 'IS-7'");
+                return ("", 1, "Normal", _msg.TankNameMissing);
 
             raw = raw.Trim();
             int cost = 1;
@@ -54,10 +56,10 @@ namespace TankRequest.Services
             }
 
             if (string.IsNullOrWhiteSpace(tank))
-                return ("", 1, "Normal", "Adj meg egy tanknevet! Pl.: 'IS-7'");
+                return ("", 1, "Normal", _msg.TankNameMissing);
 
             if (tank.Length > _config.MaxTankNameLength)
-                return ("", 1, "Normal", $"Túl hosszú a tanknév (max {_config.MaxTankNameLength} karakter)!");
+                return ("", 1, "Normal", Messages.Format(_msg.TankNameTooLong, ("maxLength", _config.MaxTankNameLength)));
 
             return (tank, cost, type, null);
         }

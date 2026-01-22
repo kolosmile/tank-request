@@ -17,8 +17,9 @@ namespace TankRequest.Handlers
             TokenService tokenService,
             QueueService queueService,
             OverlayService overlayService,
-            Config config)
-            : base(cph, args, stateService, tokenService, queueService, overlayService, config)
+            Config config,
+            Messages messages)
+            : base(cph, args, stateService, tokenService, queueService, overlayService, config, messages)
         {
         }
 
@@ -34,7 +35,7 @@ namespace TankRequest.Handlers
                 _cph.SetArgument("displayMsg", error);
                 if (!string.IsNullOrEmpty(rewardId) && !string.IsNullOrEmpty(redemptionId))
                     try { _cph.TwitchRedemptionCancel(rewardId, redemptionId); } catch { }
-                SendMessage($"@{UserName}, {error}");
+                SendMessage(Msg(_msg.Error, ("user", UserName), ("error", error)));
                 return;
             }
 
@@ -71,11 +72,11 @@ namespace TankRequest.Handlers
             if (balance < cost)
             {
                 _cph.SetArgument("allow", "false");
-                string errMsg = $"Nincs elég tokened (van: {balance}, kell: {cost}).";
+                string errMsg = Msg(_msg.NotEnoughTokens, ("balance", balance), ("cost", cost));
                 _cph.SetArgument("displayMsg", errMsg);
                 if (!string.IsNullOrEmpty(rewardId) && !string.IsNullOrEmpty(redemptionId))
                     try { _cph.TwitchRedemptionCancel(rewardId, redemptionId); } catch { }
-                SendMessage($"@{UserName}, {errMsg}");
+                SendMessage(Msg(_msg.Error, ("user", UserName), ("error", errMsg)));
                 return;
             }
 
@@ -93,10 +94,15 @@ namespace TankRequest.Handlers
             int balanceAfter = _tokenService.GetActiveBalance(user);
             _cph.SetArgument("allow", "true");
             
-            string msg = $"Felvéve: [S] {tank} x{cost} – @{UserName}. Maradt: {balanceAfter}.";
-            if (type == "Arty") msg = $"Arty kérés kiváltva: {tank} (5 token) - @{UserName}. Maradt: {balanceAfter}.";
-            else if (type == "Blacklist") msg = $"Feketelistás kérés kiváltva: {tank} (3 token) - @{UserName}. Maradt: {balanceAfter}.";
-            else if (type == "Troll") msg = $"Troll kérés kiváltva: {tank} (10 token) - @{UserName}. Maradt: {balanceAfter}.";
+            string msg;
+            if (type == "Arty") 
+                msg = Msg(_msg.ArtyAdded, ("tank", tank), ("user", UserName), ("balance", balanceAfter));
+            else if (type == "Blacklist") 
+                msg = Msg(_msg.BlacklistAdded, ("tank", tank), ("user", UserName), ("balance", balanceAfter));
+            else if (type == "Troll") 
+                msg = Msg(_msg.TrollAdded, ("tank", tank), ("user", UserName), ("balance", balanceAfter));
+            else 
+                msg = Msg(_msg.SupporterAdded, ("tank", tank), ("cost", cost), ("user", UserName), ("balance", balanceAfter));
             
             _cph.SetArgument("displayMsg", msg);
             SendMessage(msg);
@@ -117,7 +123,7 @@ namespace TankRequest.Handlers
                 _cph.SetArgument("displayMsg", error);
                 if (!string.IsNullOrEmpty(rewardId) && !string.IsNullOrEmpty(redemptionId))
                     try { _cph.TwitchRedemptionCancel(rewardId, redemptionId); } catch { }
-                SendMessage($"@{UserName}, {error}");
+                SendMessage(Msg(_msg.Error, ("user", UserName), ("error", error)));
                 return;
             }
 
@@ -133,7 +139,7 @@ namespace TankRequest.Handlers
             _overlayService.RenderQueue(state);
 
             _cph.SetArgument("allow", "true");
-            string msg = $"Felvéve: [N] {tank} – @{UserName}";
+            string msg = Msg(_msg.NormalAdded, ("tank", tank), ("user", UserName));
             _cph.SetArgument("displayMsg", msg);
             SendMessage(msg);
             LogInfo($"[NormalRedeem] {UserName} added tank {tank} to normal queue");
@@ -146,7 +152,7 @@ namespace TankRequest.Handlers
 
             if (item == null)
             {
-                SendMessage("A sor üres.");
+                SendMessage(_msg.QueueEmpty);
                 return;
             }
 
@@ -163,7 +169,7 @@ namespace TankRequest.Handlers
             if (item.specialType == "Blacklist") text = $"{item.tank} [BLACKLIST]";
             if (item.specialType == "Troll") text = $"{item.tank} [TROLL]";
             
-            SendMessage($"Teljesítve: {(isSupporter ? "[S]" : "[N]")} {text} — @{item.user}");
+            SendMessage(Msg(_msg.Completed, ("type", isSupporter ? "[S]" : "[N]"), ("tank", text), ("user", item.user)));
             _overlayService.RenderQueue(state);
         }
 
@@ -181,7 +187,7 @@ namespace TankRequest.Handlers
                 catch { }
             }
 
-            SendMessage($"Visszavonva: [N] {item.tank} — {item.user} (pont visszaadva)");
+            SendMessage(Msg(_msg.RefundedNormal, ("tank", item.tank), ("user", item.user)));
             _overlayService.RenderQueue(state);
         }
 
@@ -191,7 +197,7 @@ namespace TankRequest.Handlers
             var items = _queueService.RefundAllNormal(state);
             if (items.Length == 0)
             {
-                SendMessage("Nincs normál kérés a sorban.");
+                SendMessage(_msg.NoNormalRequests);
                 return;
             }
 
@@ -203,7 +209,7 @@ namespace TankRequest.Handlers
                     try { _cph.TwitchRedemptionCancel(item.rewardId, item.redemptionId); } catch { }
             }
 
-            SendMessage($"{items.Length} normál kérés visszavonva, pontok visszaadva.");
+            SendMessage(Msg(_msg.RefundedAllNormal, ("count", items.Length)));
             _overlayService.RenderQueue(state);
         }
 
@@ -218,20 +224,20 @@ namespace TankRequest.Handlers
         {
             if (!IsModOrBroadcaster)
             {
-                SendMessage($"@{UserName}, csak mod/broadcaster használhatja.");
+                SendMessage(Msg(_msg.ModOnly, ("user", UserName)));
                 return;
             }
             
             if (string.IsNullOrEmpty(RawInput))
             {
-                SendMessage($"@{UserName}, használat: !queuenormal [tank név]");
+                SendMessage(Msg(_msg.UsageQueueNormal, ("user", UserName)));
                 return;
             }
             
             var (tank, cost, type, error) = _queueService.ParseInput(RawInput, forceMult1: true);
             if (error != null)
             {
-                SendMessage($"@{UserName}, {error}");
+                SendMessage(Msg(_msg.Error, ("user", UserName), ("error", error)));
                 return;
             }
             
@@ -245,20 +251,20 @@ namespace TankRequest.Handlers
             _stateService.Save(state);
             _overlayService.RenderQueue(state);
             
-            SendMessage($"[MANUAL] Felvéve: [N] {tank} – {UserName}");
+            SendMessage(Msg(_msg.ManualNormalAdded, ("tank", tank), ("user", UserName)));
         }
 
         public void HandleQueueSupporter()
         {
             if (!IsModOrBroadcaster)
             {
-                SendMessage($"@{UserName}, csak mod/broadcaster használhatja.");
+                SendMessage(Msg(_msg.ModOnly, ("user", UserName)));
                 return;
             }
             
             if (string.IsNullOrEmpty(RawInput))
             {
-                SendMessage($"@{UserName}, használat: !queuesupporter [@user] [tank név] [szorzó/kód]");
+                SendMessage(Msg(_msg.UsageQueueSupporter, ("user", UserName)));
                 return;
             }
             
@@ -284,7 +290,7 @@ namespace TankRequest.Handlers
                 }
                 else
                 {
-                    SendMessage($"@{UserName}, használat: !queuesupporter @user [tank név] [szorzó/kód]");
+                    SendMessage(Msg(_msg.UsageQueueSupporter, ("user", UserName)));
                     return;
                 }
             }
@@ -292,7 +298,7 @@ namespace TankRequest.Handlers
             var (tank, cost, type, error) = _queueService.ParseInput(inputToParse, forceMult1: false);
             if (error != null)
             {
-                SendMessage($"@{UserName}, {error}");
+                SendMessage(Msg(_msg.Error, ("user", UserName), ("error", error)));
                 return;
             }
             
@@ -319,7 +325,7 @@ namespace TankRequest.Handlers
                 
                 if (targetUserState == null)
                 {
-                    SendMessage($"@{UserName}, {targetUser} nem található a rendszerben.");
+                    SendMessage(Msg(_msg.UserNotFound, ("user", UserName), ("target", targetUser)));
                     return;
                 }
                 
@@ -329,7 +335,7 @@ namespace TankRequest.Handlers
                 int balance = _tokenService.GetActiveBalance(targetUserState);
                 if (balance < cost)
                 {
-                    SendMessage($"@{targetUser} nem rendelkezik elég tokennel (van: {balance}, kell: {cost}).");
+                    SendMessage(Msg(_msg.TargetNotEnoughTokens, ("target", targetUser), ("balance", balance), ("cost", cost)));
                     return;
                 }
                 

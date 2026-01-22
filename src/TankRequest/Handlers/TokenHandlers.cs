@@ -17,8 +17,9 @@ namespace TankRequest.Handlers
             TokenService tokenService,
             QueueService queueService,
             OverlayService overlayService,
-            Config config)
-            : base(cph, args, stateService, tokenService, queueService, overlayService, config)
+            Config config,
+            Messages messages)
+            : base(cph, args, stateService, tokenService, queueService, overlayService, config, messages)
         {
         }
 
@@ -121,7 +122,7 @@ namespace TankRequest.Handlers
             _stateService.Save(state);
 
             int balance = _tokenService.GetActiveBalance(user);
-            SendMessage($"@{tipperUserName}, +{tokens} támogatói token. Egyenleg: {balance}");
+            SendMessage(Msg(_msg.TokensCredited, ("user", tipperUserName), ("amount", tokens), ("balance", balance)));
             LogInfo($"[CreditTokens] userId={tipperUserId} userName={tipperUserName} +{tokens} (balance={balance})");
         }
 
@@ -228,14 +229,14 @@ namespace TankRequest.Handlers
                 // If I am at Pos 3, I wait for Pos 1 (active) and Pos 2 (next).
                 if (pos == 1)
                 {
-                    queueInfo = $" Pozíció: {pos}. (Épp csatában.)";
+                    queueInfo = Msg(_msg.QueuePosActive, ("pos", pos));
                 }
                 else
                 {
                     int waitCount = pos - 2;
                     if (waitCount <= 0) // Pos 2 basically
                     {
-                        queueInfo = $" Pozíció: {pos}. (Hamarosan sorra kerülsz.)";
+                        queueInfo = Msg(_msg.QueuePosSoon, ("pos", pos));
                     }
                     else
                     {
@@ -243,7 +244,7 @@ namespace TankRequest.Handlers
                         string eta = totalMinutes < 60 
                             ? $"{totalMinutes} perc" 
                             : $"{totalMinutes / 60} óra {totalMinutes % 60} perc";
-                        queueInfo = $" Pozíció: {pos}. (kb. {eta} múlva)";
+                        queueInfo = Msg(_msg.QueuePosWait, ("pos", pos), ("eta", eta));
                     }
                 }
             }
@@ -255,29 +256,29 @@ namespace TankRequest.Handlers
             // Build response based on what info we have
             if (balance > 0)
             {
-                SendMessage($"@{UserName}, {targetPrefix}Egyenleg: {balance} (lejár: {expiryStr}).{queueInfo}");
+                SendMessage(Msg(_msg.TankInfoBalance, ("user", UserName), ("target", targetPrefix), ("balance", balance), ("expiry", expiryStr), ("queueInfo", queueInfo)));
             }
             else if (pos > 0)
             {
-                SendMessage($"@{UserName}, {targetPrefix}Nincs tokened, de van kérésed a sorban.{queueInfo}");
+                SendMessage(Msg(_msg.TankInfoNoTokensInQueue, ("user", UserName), ("target", targetPrefix), ("queueInfo", queueInfo)));
             }
             else
             {
-                SendMessage($"@{UserName}, {targetPrefix}Nincs tokened és nincs kérésed a sorban.");
+                SendMessage(Msg(_msg.TankInfoEmpty, ("user", UserName), ("target", targetPrefix)));
             }
         }
 
         public void HandleTankHelp()
         {
-            SendMessage($" Így kérhetsz tankot: 1. Normál: Csatornapontból. 2. Támogatói: Tokenekkel (⭐prioritás). 🪙Token jár: Sub (T1={_config.Tier1Tokens}tk, T2={_config.Tier2Tokens}tk, T3={_config.Tier3Tokens}tk), Cheer ({_config.BitsPerToken}b=1tk), Tip ({_config.TipPerToken}€=1tk).");
-            SendMessage($"🕒A tokenek {_config.TtlHours} óráig érvényesek! ⚠️Speciális: xA (Arty, {_config.CostArty}tk), xB (Blacklist, {_config.CostBlacklist}tk), xT (Troll, {_config.CostTroll}tk). 📈Többszörös Bombardino pontért használj szorzót (pl. Tiger x3). Egyenleg: !tankinfo");
+            SendMessage(Msg(_msg.HelpLine1, ("tier1", _config.Tier1Tokens), ("tier2", _config.Tier2Tokens), ("tier3", _config.Tier3Tokens), ("bitsPerToken", _config.BitsPerToken), ("tipPerToken", _config.TipPerToken)));
+            SendMessage(Msg(_msg.HelpLine2, ("ttlHours", _config.TtlHours), ("costArty", _config.CostArty), ("costBlacklist", _config.CostBlacklist), ("costTroll", _config.CostTroll)));
         }
 
         public void HandleAddTokens()
         {
             if (!IsModOrBroadcaster)
             {
-                SendMessage($"@{UserName}, csak mod/broadcaster használhatja ezt a parancsot.");
+                SendMessage(Msg(_msg.ModOnly, ("user", UserName)));
                 return;
             }
             
@@ -300,7 +301,7 @@ namespace TankRequest.Handlers
             }
             else
             {
-                SendMessage($"@{UserName}, használat: !addtokens [mennyiség] vagy !addtokens [felhasználó] [mennyiség]");
+                SendMessage(Msg(_msg.UsageAddTokens, ("user", UserName)));
                 return;
             }
             
@@ -344,7 +345,7 @@ namespace TankRequest.Handlers
             _stateService.Save(state);
             
             int balance = _tokenService.GetActiveBalance(user);
-            SendMessage($"@{targetUserName}, +{amount} token. Egyenleg: {balance}");
+            SendMessage(Msg(_msg.TokensAdded, ("user", targetUserName), ("amount", amount), ("balance", balance)));
             LogInfo($"[AddTokens] {targetUserName} +{amount} (balance={balance})");
         }
 
@@ -352,7 +353,7 @@ namespace TankRequest.Handlers
         {
             if (!IsModOrBroadcaster)
             {
-                SendMessage($"@{UserName}, csak mod/broadcaster használhatja ezt a parancsot.");
+                SendMessage(Msg(_msg.ModOnly, ("user", UserName)));
                 return;
             }
             
@@ -374,7 +375,7 @@ namespace TankRequest.Handlers
             }
             else
             {
-                SendMessage($"@{UserName}, használat: !removetokens [mennyiség] vagy !removetokens [felhasználó] [mennyiség]");
+                SendMessage(Msg(_msg.UsageRemoveTokens, ("user", UserName)));
                 return;
             }
             
@@ -402,7 +403,7 @@ namespace TankRequest.Handlers
             
             if (user == null)
             {
-                SendMessage($"@{UserName}, {targetUserName} nem található.");
+                SendMessage(Msg(_msg.UserNotFound, ("user", UserName), ("target", targetUserName)));
                 return;
             }
             
@@ -411,7 +412,7 @@ namespace TankRequest.Handlers
             _stateService.Save(state);
             
             int balance = _tokenService.GetActiveBalance(user);
-            SendMessage($"@{targetUserName}, -{removed} token. Egyenleg: {balance}");
+            SendMessage(Msg(_msg.TokensRemoved, ("user", targetUserName), ("amount", removed), ("balance", balance)));
             LogInfo($"[RemoveTokens] {targetUserName} -{removed} (balance={balance})");
         }
 

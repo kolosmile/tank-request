@@ -20,6 +20,7 @@ namespace TankRequest
         private readonly QueueService _queueService;
         private readonly OverlayService _overlayService;
         private readonly Config _config;
+        private readonly Messages _msg;
 
         private readonly TokenHandlers _tokenHandlers;
         private readonly QueueHandlers _queueHandlers;
@@ -34,13 +35,14 @@ namespace TankRequest
                 (key, value) => SetGlobal(key, value)
             );
             _config = _stateService.LoadConfig();
+            _msg = _stateService.LoadMessages();
             _tokenService = new TokenService(_config);
-            _queueService = new QueueService(_config);
+            _queueService = new QueueService(_config, _msg);
             _overlayService = new OverlayService(_config);
 
             // Initialize handlers (cast dynamic to object to avoid constructor initializer error)
-            _tokenHandlers = new TokenHandlers((object)cph, args, _stateService, _tokenService, _queueService, _overlayService, _config);
-            _queueHandlers = new QueueHandlers((object)cph, args, _stateService, _tokenService, _queueService, _overlayService, _config);
+            _tokenHandlers = new TokenHandlers((object)cph, args, _stateService, _tokenService, _queueService, _overlayService, _config, _msg);
+            _queueHandlers = new QueueHandlers((object)cph, args, _stateService, _tokenService, _queueService, _overlayService, _config, _msg);
         }
 
         #region Helper Methods
