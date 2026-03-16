@@ -63,6 +63,27 @@ namespace TankRequest.Handlers
         protected string UserName => Arg("userName");
         protected string RawInput => Arg("rawInput").Trim();
 
+        protected void MergeUserProfiles(LedgerState state, string sourceId, string targetId, string userName)
+        {
+            if (string.IsNullOrEmpty(sourceId) || string.IsNullOrEmpty(targetId) || sourceId == targetId)
+                return;
+
+            if (state.users.TryGetValue(sourceId, out var sourceUser))
+            {
+                if (!state.users.TryGetValue(targetId, out var targetUser))
+                {
+                    targetUser = new UserState();
+                    state.users[targetId] = targetUser;
+                }
+
+                targetUser.userName = userName;
+                targetUser.buckets.AddRange(sourceUser.buckets);
+                state.users.Remove(sourceId);
+
+                LogInfo($"[UserMerge] Migrated {userName} from {sourceId} to real ID {targetId}. Combined total buckets: {targetUser.buckets.Count}");
+            }
+        }
+
         #endregion
     }
 }
