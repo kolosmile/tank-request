@@ -1,5 +1,6 @@
 namespace TankRequest.Services
 {
+    using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Text;
@@ -22,12 +23,88 @@ namespace TankRequest.Services
         /// </summary>
         public void RenderQueue(LedgerState state)
         {
+            if (_config.HasInvalidSettings)
+            {
+                WriteAtomically(_config.QueueHtmlPath, GenerateSetupWarningHtml());
+                return;
+            }
+
             var items = GetDisplayItems(state, _config.QueueLines);
             int totalCount = state.supporterQueue.Count + state.normalQueue.Count;
             int remaining = totalCount - items.Count;
 
             var html = GenerateHtml(items, remaining);
-            File.WriteAllText(_config.QueueHtmlPath, html, Encoding.UTF8);
+            WriteAtomically(_config.QueueHtmlPath, html);
+        }
+
+        private string GenerateSetupWarningHtml()
+        {
+            var invalidItems = new StringBuilder();
+            foreach (string setting in _config.InvalidSettings)
+                invalidItems.Append("<li>").Append(HtmlEncode(setting)).AppendLine("</li>");
+
+            return $@"<!doctype html>
+<html>
+<head>
+<meta charset='utf-8'>
+<meta http-equiv='refresh' content='2'>
+<style>
+* {{ box-sizing: border-box; }}
+html, body {{ margin: 0; background: transparent; font-family: 'Segoe UI', Arial, sans-serif; }}
+.warning {{ margin: 12px; padding: 18px 22px; max-width: 760px; color: #fff; background: rgba(110, 0, 0, .94); border: 4px solid #ff3030; border-radius: 12px; box-shadow: 0 0 24px rgba(255, 0, 0, .8); }}
+.title {{ color: #ff6060; font-size: 30px; font-weight: 800; text-transform: uppercase; }}
+.message {{ margin-top: 8px; font-size: 24px; font-weight: 700; }}
+.details {{ margin-top: 12px; color: #ffd0d0; font-size: 17px; }}
+ul {{ margin: 6px 0 0; }}
+</style>
+</head>
+<body>
+<div class='warning'>
+  <div class='title'>⚠ Beállítási hiba</div>
+  <div class='message'>Futtasd le újra rendesen a Setup UI-t!</div>
+  <div class='details'>A Setup UI megszakadt vagy Cancel történt. Hibás változók:<ul>{invalidItems}</ul></div>
+</div>
+</body>
+</html>";
+        }
+
+        private static string HtmlEncode(string value)
+        {
+            return (value ?? "")
+                .Replace("&", "&amp;")
+                .Replace("<", "&lt;")
+                .Replace(">", "&gt;")
+                .Replace("\"", "&quot;")
+                .Replace("'", "&#39;");
+        }
+
+        /// <summary>
+        /// Write the complete overlay beside the destination, then replace the
+        /// visible file in one operation. This prevents OBS from loading a
+        /// truncated document while a render is in progress.
+        /// </summary>
+        private static void WriteAtomically(string path, string content)
+        {
+            string fullPath = Path.GetFullPath(path);
+            string directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
+
+            string tempPath = fullPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(tempPath, content, Encoding.UTF8);
+
+                if (File.Exists(fullPath))
+                    File.Replace(tempPath, fullPath, null, true);
+                else
+                    File.Move(tempPath, fullPath);
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+            }
         }
 
         private List<(QueueItem item, bool isSupporter)> GetDisplayItems(LedgerState state, int max)

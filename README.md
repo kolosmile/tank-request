@@ -211,6 +211,7 @@ Kattints a **Setup UI** action-re → **Test** gomb → töltsd ki:
 | Nem jön létre HTML | Ellenőrizd: `C:\stream\` mappa létezik? |
 | Nincs token jóváírás | Ellenőrizd a triggereket |
 | Overlay nem frissül | OBS: frissítsd a Browser Source-ot |
+| Logban `rendering %cfgQueueHtml%` látható | A Setup UI megszakadt, és hibás placeholder került a globális változókba. Az új DLL a normál lista helyett piros figyelmeztetést renderel a `C:\stream\tankqueue.html` fájlba; futtasd végig újra a Setup UI-t. |
 | `!tank` nem működik | Ellenőrizd a Chat Command triggert |
 
 ---

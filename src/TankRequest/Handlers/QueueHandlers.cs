@@ -23,6 +23,27 @@ namespace TankRequest.Handlers
         {
         }
 
+        /// <summary>
+        /// Persist queue state and refresh the local overlay before any
+        /// potentially blocking Twitch or chat operation is attempted.
+        /// </summary>
+        private void SaveAndRender(LedgerState state, string operation)
+        {
+            _stateService.Save(state);
+            LogInfo($"[Overlay] State saved after {operation}; rendering {_config.QueueHtmlPath}");
+
+            try
+            {
+                _overlayService.RenderQueue(state);
+                LogInfo($"[Overlay] Render completed after {operation}");
+            }
+            catch (Exception ex)
+            {
+                // Overlay I/O must not prevent redemption handling or chat output.
+                LogWarn($"[Overlay] Render failed after {operation}: {ex.Message}");
+            }
+        }
+
         public void HandleSupporterRedeem()
         {
             string redemptionId = Arg("redemptionId");
@@ -75,8 +96,7 @@ namespace TankRequest.Handlers
                 redemptionId = redemptionId, rewardId = rewardId,
                 specialType = type
             });
-            _stateService.Save(state);
-            _overlayService.RenderQueue(state);
+            SaveAndRender(state, "supporter redeem");
 
             int balanceAfter = _tokenService.GetActiveBalance(user);
             _cph.SetArgument("allow", "true");
@@ -122,8 +142,7 @@ namespace TankRequest.Handlers
                 redemptionId = redemptionId, rewardId = rewardId,
                 specialType = "Normal"
             });
-            _stateService.Save(state);
-            _overlayService.RenderQueue(state);
+            SaveAndRender(state, "normal redeem");
 
             _cph.SetArgument("allow", "true");
             string msg = Msg(_msg.NormalAdded, ("tank", tank), ("user", UserName));
@@ -143,11 +162,16 @@ namespace TankRequest.Handlers
                 return;
             }
 
-            _stateService.Save(state);
+            SaveAndRender(state, "dequeue");
 
             if (!isSupporter && !string.IsNullOrEmpty(item.rewardId) && !string.IsNullOrEmpty(item.redemptionId))
             {
-                try { _cph.TwitchRedemptionFulfill(item.rewardId, item.redemptionId); }
+                LogInfo($"[Dequeue] Fulfilling redemption {item.redemptionId}");
+                try
+                {
+                    _cph.TwitchRedemptionFulfill(item.rewardId, item.redemptionId);
+                    LogInfo($"[Dequeue] Fulfilled redemption {item.redemptionId}");
+                }
                 catch (Exception ex) { LogWarn($"Fulfill failed: {ex.Message}"); }
             }
 
@@ -156,8 +180,9 @@ namespace TankRequest.Handlers
             if (item.specialType == "Blacklist") text = $"{item.tank} [BLACKLIST]";
             if (item.specialType == "Troll") text = $"{item.tank} [TROLL]";
             
+            LogInfo("[Dequeue] Sending completion message");
             SendMessage(Msg(_msg.Completed, ("type", isSupporter ? "[S]" : "[N]"), ("tank", text), ("user", item.user)));
-            _overlayService.RenderQueue(state);
+            LogInfo("[Dequeue] Completion message sent");
         }
 
         public void HandleRefundTop()
@@ -166,16 +191,20 @@ namespace TankRequest.Handlers
             var item = _queueService.RefundTopNormal(state);
             if (item == null) return;
 
-            _stateService.Save(state);
+            SaveAndRender(state, "refund top");
 
             if (!string.IsNullOrEmpty(item.rewardId) && !string.IsNullOrEmpty(item.redemptionId))
             {
-                try { _cph.TwitchRedemptionCancel(item.rewardId, item.redemptionId); }
-                catch { }
+                LogInfo($"[RefundTop] Cancelling redemption {item.redemptionId}");
+                try
+                {
+                    _cph.TwitchRedemptionCancel(item.rewardId, item.redemptionId);
+                    LogInfo($"[RefundTop] Cancelled redemption {item.redemptionId}");
+                }
+                catch (Exception ex) { LogWarn($"[RefundTop] Cancel failed: {ex.Message}"); }
             }
 
             SendMessage(Msg(_msg.RefundedNormal, ("tank", item.tank), ("user", item.user)));
-            _overlayService.RenderQueue(state);
         }
 
         public void HandleRefundAllNormal()
@@ -188,23 +217,37 @@ namespace TankRequest.Handlers
                 return;
             }
 
-            _stateService.Save(state);
+            SaveAndRender(state, "refund all normal");
 
             foreach (var item in items)
             {
                 if (!string.IsNullOrEmpty(item.rewardId) && !string.IsNullOrEmpty(item.redemptionId))
-                    try { _cph.TwitchRedemptionCancel(item.rewardId, item.redemptionId); } catch { }
+                {
+                    LogInfo($"[RefundAll] Cancelling redemption {item.redemptionId}");
+                    try
+                    {
+                        _cph.TwitchRedemptionCancel(item.rewardId, item.redemptionId);
+                        LogInfo($"[RefundAll] Cancelled redemption {item.redemptionId}");
+                    }
+                    catch (Exception ex) { LogWarn($"[RefundAll] Cancel failed: {ex.Message}"); }
+                }
             }
 
             SendMessage(Msg(_msg.RefundedAllNormal, ("count", items.Length)));
-            _overlayService.RenderQueue(state);
         }
 
         public void HandleRenderQueue()
         {
             var state = _stateService.Load();
-            _overlayService.RenderQueue(state);
-            LogInfo($"Queue HTML frissítve: {_config.QueueHtmlPath}");
+            try
+            {
+                _overlayService.RenderQueue(state);
+                LogInfo($"[Overlay] Manual/startup render completed: {_config.QueueHtmlPath}");
+            }
+            catch (Exception ex)
+            {
+                LogWarn($"[Overlay] Manual/startup render failed: {ex.Message}");
+            }
         }
 
         public void HandleQueueNormal()
@@ -235,8 +278,7 @@ namespace TankRequest.Handlers
                 tsUtc = DateTime.UtcNow, raw = RawInput,
                 specialType = "Normal"
             });
-            _stateService.Save(state);
-            _overlayService.RenderQueue(state);
+            SaveAndRender(state, "manual normal enqueue");
             
             SendMessage(Msg(_msg.ManualNormalAdded, ("tank", tank), ("user", UserName)));
         }
@@ -335,8 +377,7 @@ namespace TankRequest.Handlers
                 tsUtc = DateTime.UtcNow, raw = RawInput,
                 specialType = type
             });
-            _stateService.Save(state);
-            _overlayService.RenderQueue(state);
+            SaveAndRender(state, "manual supporter enqueue");
             
             string msg;
             if (targetUser != null)

@@ -36,35 +36,115 @@ namespace TankRequest.Services
         {
             var cfg = new Config();
             
-            if (int.TryParse(_getGlobal("cfg.ttlHours"), out int ttl)) cfg.TtlHours = ttl;
-            if (int.TryParse(_getGlobal("cfg.bitsPerToken"), out int bpt)) cfg.BitsPerToken = bpt;
-            if (int.TryParse(_getGlobal("cfg.tipPerToken"), out int tpt)) cfg.TipPerToken = tpt;
-            if (int.TryParse(_getGlobal("cfg.tier1Tokens"), out int t1)) cfg.Tier1Tokens = t1;
-            if (int.TryParse(_getGlobal("cfg.tier2Tokens"), out int t2)) cfg.Tier2Tokens = t2;
-            if (int.TryParse(_getGlobal("cfg.tier3Tokens"), out int t3)) cfg.Tier3Tokens = t3;
-            if (int.TryParse(_getGlobal("cfg.queueLines"), out int ql)) cfg.QueueLines = ql;
+            ApplyPositiveInt(cfg, "cfg.ttlHours", value => cfg.TtlHours = value);
+            ApplyPositiveInt(cfg, "cfg.bitsPerToken", value => cfg.BitsPerToken = value);
+            ApplyPositiveInt(cfg, "cfg.tipPerToken", value => cfg.TipPerToken = value);
+            ApplyNonNegativeInt(cfg, "cfg.tier1Tokens", value => cfg.Tier1Tokens = value);
+            ApplyNonNegativeInt(cfg, "cfg.tier2Tokens", value => cfg.Tier2Tokens = value);
+            ApplyNonNegativeInt(cfg, "cfg.tier3Tokens", value => cfg.Tier3Tokens = value);
+            ApplyPositiveInt(cfg, "cfg.queueLines", value => cfg.QueueLines = value);
             
             var htmlPath = _getGlobal("cfg.queueHtmlPath");
-            if (!string.IsNullOrEmpty(htmlPath)) cfg.QueueHtmlPath = htmlPath;
+            if (TryResolveConfiguredPath(htmlPath, out string resolvedHtmlPath))
+                cfg.QueueHtmlPath = resolvedHtmlPath;
+            else if (!string.IsNullOrWhiteSpace(htmlPath))
+                AddInvalid(cfg, "cfg.queueHtmlPath");
             
             var iconPath = _getGlobal("cfg.normalIconPath");
-            if (!string.IsNullOrEmpty(iconPath)) cfg.NormalIconPath = iconPath;
+            if (TryResolveConfiguredPath(iconPath, out string resolvedIconPath))
+                cfg.NormalIconPath = resolvedIconPath;
+            else if (!string.IsNullOrWhiteSpace(iconPath))
+                AddInvalid(cfg, "cfg.normalIconPath");
+
+            // Legacy overlay path is no longer consumed by the DLL, but a
+            // persisted placeholder still proves that Setup UI was cancelled.
+            MarkInvalidPlaceholder(cfg, "cfg.queueFile");
             
             // Reward patterns (optional - defaults work if not set)
             var supporterPattern = _getGlobal("cfg.supporterRewardPattern");
-            if (!string.IsNullOrEmpty(supporterPattern)) cfg.SupporterRewardPattern = supporterPattern;
+            if (IsUnresolvedValue(supporterPattern)) AddInvalid(cfg, "cfg.supporterRewardPattern");
+            else if (!string.IsNullOrEmpty(supporterPattern)) cfg.SupporterRewardPattern = supporterPattern;
             
             var normalPattern = _getGlobal("cfg.normalRewardPattern");
-            if (!string.IsNullOrEmpty(normalPattern)) cfg.NormalRewardPattern = normalPattern;
+            if (IsUnresolvedValue(normalPattern)) AddInvalid(cfg, "cfg.normalRewardPattern");
+            else if (!string.IsNullOrEmpty(normalPattern)) cfg.NormalRewardPattern = normalPattern;
             
             // Hotkey patterns (optional - defaults work if not set)
             var dequeueHotkey = _getGlobal("cfg.dequeueHotkey");
-            if (!string.IsNullOrEmpty(dequeueHotkey)) cfg.DequeueHotkey = dequeueHotkey;
+            if (IsUnresolvedValue(dequeueHotkey)) AddInvalid(cfg, "cfg.dequeueHotkey");
+            else if (!string.IsNullOrEmpty(dequeueHotkey)) cfg.DequeueHotkey = dequeueHotkey;
             
             var refundHotkey = _getGlobal("cfg.refundTopHotkey");
-            if (!string.IsNullOrEmpty(refundHotkey)) cfg.RefundTopHotkey = refundHotkey;
+            if (IsUnresolvedValue(refundHotkey)) AddInvalid(cfg, "cfg.refundTopHotkey");
+            else if (!string.IsNullOrEmpty(refundHotkey)) cfg.RefundTopHotkey = refundHotkey;
 
             return cfg;
+        }
+
+        private void ApplyPositiveInt(Config cfg, string key, Action<int> apply)
+        {
+            ApplyInt(cfg, key, value => value > 0, apply);
+        }
+
+        private void ApplyNonNegativeInt(Config cfg, string key, Action<int> apply)
+        {
+            ApplyInt(cfg, key, value => value >= 0, apply);
+        }
+
+        private void ApplyInt(Config cfg, string key, Func<int, bool> isValid, Action<int> apply)
+        {
+            string raw = _getGlobal(key);
+            if (string.IsNullOrWhiteSpace(raw))
+                return;
+
+            if (IsUnresolvedValue(raw) || !int.TryParse(raw, out int value) || !isValid(value))
+            {
+                AddInvalid(cfg, key);
+                return;
+            }
+
+            apply(value);
+        }
+
+        private void MarkInvalidPlaceholder(Config cfg, string key)
+        {
+            if (IsUnresolvedValue(_getGlobal(key)))
+                AddInvalid(cfg, key);
+        }
+
+        private static void AddInvalid(Config cfg, string key)
+        {
+            if (!cfg.InvalidSettings.Contains(key))
+                cfg.InvalidSettings.Add(key);
+        }
+
+        private static bool IsUnresolvedValue(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            string trimmed = value.Trim();
+            return trimmed.Length >= 2 && trimmed[0] == '%' && trimmed[trimmed.Length - 1] == '%';
+        }
+
+        /// <summary>
+        /// Reject Streamer.bot placeholders that were accidentally persisted by
+        /// Setup UI (for example "%cfgQueueHtml%"). Environment variables are
+        /// expanded, while unresolved percent-delimited values fall back to the
+        /// defaults declared in Config.
+        /// </summary>
+        private static bool TryResolveConfiguredPath(string value, out string resolved)
+        {
+            resolved = null;
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            string expanded = Environment.ExpandEnvironmentVariables(value.Trim());
+            if (IsUnresolvedValue(expanded) || expanded.IndexOf('%') >= 0)
+                return false;
+
+            resolved = expanded;
+            return true;
         }
 
         public Messages LoadMessages()

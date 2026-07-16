@@ -1,5 +1,7 @@
 namespace TankRequest.Models
 {
+    using System.Collections.Generic;
+
     /// <summary>
     /// Configuration loaded from Streamer.bot global variables (cfg.*)
     /// </summary>
@@ -34,5 +36,10 @@ namespace TankRequest.Models
         
         // Battle Duration (minutes) for ETA
         public int BattleDurationMinutes { get; set; } = 8;
+
+        // Setup validation. Invalid persisted values must be visible instead of
+        // being silently masked by defaults.
+        public List<string> InvalidSettings { get; } = new List<string>();
+        public bool HasInvalidSettings => InvalidSettings.Count > 0;
     }
 }

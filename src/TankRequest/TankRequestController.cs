@@ -103,6 +103,20 @@ namespace TankRequest
             string action = DetectAction();
             LogInfo($"[TankRequest] Detected action: {action}");
 
+            if (_config.HasInvalidSettings)
+            {
+                LogWarn($"[TankRequest] Invalid Setup UI configuration: {string.Join(", ", _config.InvalidSettings)}");
+                try
+                {
+                    _overlayService.RenderQueue(_stateService.Load());
+                    LogWarn($"[TankRequest] Setup warning rendered to {_config.QueueHtmlPath}");
+                }
+                catch (Exception ex)
+                {
+                    LogWarn($"[TankRequest] Could not render setup warning: {ex.Message}");
+                }
+            }
+
             switch (action)
             {
                 // Token handlers
@@ -119,6 +133,7 @@ namespace TankRequest
                 case "refund_top": _queueHandlers.HandleRefundTop(); break;
                 case "refund_all": _queueHandlers.HandleRefundAllNormal(); break;
                 case "render_queue": _queueHandlers.HandleRenderQueue(); break;
+                case "startup": _queueHandlers.HandleRenderQueue(); break;
                 case "queue_normal": _queueHandlers.HandleQueueNormal(); break;
                 case "queue_supporter": _queueHandlers.HandleQueueSupporter(); break;
                 
@@ -134,6 +149,12 @@ namespace TankRequest
         {
             string command = Arg("command");
             string rewardName = Arg("rewardName");
+            string triggerName = Arg("triggerName");
+
+            // Restore the persisted queue overlay as soon as Streamer.bot starts.
+            if (string.Equals(triggerName, "Streamer.bot Started", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(triggerName, "Streamerbot Started", StringComparison.OrdinalIgnoreCase))
+                return "startup";
             
             // Command triggers
             if (!string.IsNullOrEmpty(command))

@@ -95,6 +95,21 @@ Each trigger sets an `action` argument, then runs the wrapper Execute Code.
 2. Execute Code (wrapper)
 ```
 
+### Render Overlay on Startup
+
+**Trigger:** `Core > Streamer.bot Started`
+
+This ensures the persisted queue state is written back to the overlay after a
+restart, even when the previous action was interrupted by a network outage.
+
+**Sub-Actions:**
+```
+1. Execute Code (wrapper)
+```
+
+The controller detects this trigger automatically. Setting `action = "startup"`
+manually is also supported.
+
 ### Refund Top (Hotkey)
 
 **Trigger:** `Core > Inputs > Key Press > Ctrl+Shift+R`
